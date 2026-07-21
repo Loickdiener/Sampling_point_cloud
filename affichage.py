@@ -86,9 +86,9 @@ def aff_init(ech, born_inf, born_sup, d, batch_size, nb_cols, nb_rows,
                     ax.axis("off")
                     continue
                 samples = ech[j]
-                x_coords = samples[:, 0].cpu().numpy()
-                y_coords = samples[:, 1].cpu().numpy()
-                z_coords = samples[:, 2].cpu().numpy()  # ✅ 3e dimension
+                x_coords = samples[:, 0].detach().cpu().numpy()
+                y_coords = samples[:, 1].detach().cpu().numpy()
+                z_coords = samples[:, 2].detach().cpu().numpy()
                 ax.scatter(x_coords, y_coords, z_coords, s=10)
                 ax.set_xlim(born_inf[0].cpu().numpy(), born_sup[0].cpu().numpy())
                 ax.set_ylim(born_inf[1].cpu().numpy(), born_sup[1].cpu().numpy())

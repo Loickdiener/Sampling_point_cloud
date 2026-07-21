@@ -116,7 +116,7 @@ def calc_point_poid_nb_inter(nb_samples, Nmax, d, cloud_list, weight_list, ampli
     return P_masked, m_masked, nb_points
 
 
-def dist_min_par_ech(nech, cloud_list, P_masked):
+def dist_min_par_ech(nech, cloud_list, P_masked, weight_list):
     """
     Calcule, pour chaque nuage de points, une approximation différentiable de
     la distance minimale entre deux points distincts.
@@ -131,6 +131,8 @@ def dist_min_par_ech(nech, cloud_list, P_masked):
             uniquement pour récupérer le périphérique de calcul (CPU/GPU).
         P_masked (torch.Tensor): Tensor de forme ``(nech, Nmax, d)``
             contenant les coordonnées des points de chaque nuage.
+        weight_list (torch.Tensor): Tensor de poids ``(nech, Nmax)``
+            contenant les poids associer à chaque points de chaque nuage.)
 
     Returns:
         torch.Tensor: Vecteur de taille ``nech`` contenant, pour chaque
@@ -141,13 +143,17 @@ def dist_min_par_ech(nech, cloud_list, P_masked):
     
     for i in range(nech):
         dist_pour_intra = torch.cdist(P_masked[i], P_masked[i])
+        neg = (weight_list[i] < 0).nonzero(as_tuple=True)[0]
         k, j = torch.triu_indices(dist_pour_intra.size()[0], dist_pour_intra.size()[0], offset=1)
+        mask = (~torch.isin(k, neg)) & (~torch.isin(j, neg))
+        k = k[mask]
+        j = j[mask]
         intra_all_dist = dist_pour_intra[k,j]
         min_intra_dist[i] = outils.quasimin(intra_all_dist, 0.001)
     return min_intra_dist
 
 
-def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax,
+def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
                               sinkhorn, ofr_comp, jln_mth, echdist=[], Wasserstein = True):
     """
     Calcule une mesure de séparation entre un ensemble de nuages de points.
@@ -185,7 +191,8 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax,
 
     Returns:
         torch.Tensor:
-            - si ``jln_mth=False`` : plus petite distance entre deux nuages ;
+            - si ``jln_mth=False`` : plus petite distance entre deux nuages 
+                exact ou approché selon l'iteration d'appel;
             - si ``jln_mth=True`` : score de comparaison entre la
               distribution des distances calculées et ``echdist``.
     """
@@ -236,7 +243,11 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax,
     if jln_mth:
         return ofr_comp(all_dist.view(-1,1), echdist.view(-1,1))
     else:
-        return torch.min(all_dist)
+        if it>(200):
+            return torch.min(all_dist)
+        else:
+            return outils.quasimin(all_dist, .05)
+        
 
 
 
@@ -546,10 +557,10 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         P_masked, m_masked, nb_points = calc_point_poid_nb_inter(nb_samples, Nmax, d,
                                         cloud_list, weight_list, amplificateur, turn_p)
         
-        loss_dist = calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, sinkhorn
+        loss_dist = calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it, sinkhorn
                                               , ofr_comp, jln_mth, echdist, Wasserstein)
         
-        min_intra_dist = dist_min_par_ech(nb_samples, cloud_list,P_masked)
+        min_intra_dist = dist_min_par_ech(nb_samples, cloud_list,P_masked, weight_list)
         
         if inert_pena_ch:
             inert_pena, born_disper_inf, born_disper = outils.cvm_uniform_loss(min_intra_dist,born_inf = born_disper_inf, born_sup =born_disper)

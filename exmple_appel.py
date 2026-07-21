@@ -4,9 +4,26 @@ import affichage
 import initialisation
 import optim
 import time
+import warnings
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+def init_born(a, d):
+    if len(a)!= d:
+        warnings.warn("Attention : dimention de a differente de d, clone de a affin de comble la difference")
+        born = torch.zeros(d)
+        indic = 0
+        for i in range(d):
+            if indic<len(a):
+                born[i] = a[indic]
+            else:
+                indic = 0
+                born[i] = a[indic]
+            indic +=1
+    else:
+        born = torch.tensor(a)
+    return born
 
 def mise_enforme_borne(a, b):
     """
@@ -168,6 +185,9 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
         :func:`remise_a_niveau`.
     """
     
+    
+    a = init_born(a, d)
+    b = init_born(b, d)
     a_reel = a.clone()
     a, b, retour_param = mise_enforme_borne(a, b)
     P_list, echdist = initialisation.initialisation(Nmin, Nmax, nech,jln_mth, a, b, d, nrechlhs, all_opt, aff, for_torch, seed, veux_coin, lhs)
@@ -175,7 +195,7 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
         w_list = [(torch.rand(Nmax, requires_grad=True, device=device)) for _ in range(nech)]
 
         for w in w_list:
-            ind = np.random.choice(np.arange(0, Nmax), size= np.random.randint(0, Nmax - Nmin), replace=False)
+            ind = np.random.choice(np.arange(0, Nmax), size= np.random.randint(0, Nmax - Nmin + 1), replace=False)
         
             with torch.no_grad():
                 w[ind] = -w[ind]
@@ -198,7 +218,7 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
 if __name__ == '__main__':
     start = time.perf_counter()
     torch.set_default_dtype(torch.float32) #a set toujours avant d'appeler la fonction attention beaucoup plus rappide en float32 qu'en float64
-    P_list_f = creation_dun_ech(Nmin = 24, Nmax = 30, nech = 100, a = torch.tensor([15,-30]), b = torch.tensor([23,-22]), d = 2,
+    P_list_f = creation_dun_ech(Nmin = 24, Nmax = 30, nech = 100, a = torch.tensor([15.,-30.,0.]), b = torch.tensor([23.,-22.,8.]), d = 6,
                      plot_hist = True, inert_pena_ch = True, )
     end = time.perf_counter()
     print(f"Temps d'exécution : {end - start:.6f} secondes")
