@@ -47,7 +47,7 @@ def aff_init(ech, born_inf, born_sup, d, batch_size, nb_cols, nb_rows,
     indx_batch = 0
     if d == 2 :
         for batch_start in range(0, nb_sample, batch_size):
-            fig, axes = plt.subplots(nb_rows, nb_cols, figsize=(15, 15))
+            fig, axes = plt.subplots(nb_rows, nb_cols, figsize=(9, 9))
             axes = axes.flatten()
             for k in range(batch_size):
                 j = batch_start + k
@@ -59,15 +59,18 @@ def aff_init(ech, born_inf, born_sup, d, batch_size, nb_cols, nb_rows,
                 x_coords = samples[:, 0].detach().cpu().numpy()
                 y_coords = samples[:, 1].detach().cpu().numpy()
                 ax.scatter(x_coords, y_coords, s=10)
-                ax.set_xlim(born_inf[0].cpu().numpy(), born_sup[0].cpu().numpy())
-                ax.set_ylim(born_inf[1].cpu().numpy(), born_sup[1].cpu().numpy())
+                ax.set_xlim(born_inf[0].cpu().numpy() -0.05*(born_sup[0].cpu().numpy() - born_inf[0].cpu().numpy()) , 
+                            born_sup[0].cpu().numpy() +0.05*(born_sup[0].cpu().numpy() - born_inf[0].cpu().numpy()) )
+                ax.set_ylim(born_inf[1].cpu().numpy() -0.05*(born_sup[1].cpu().numpy() - born_inf[1].cpu().numpy()) ,
+                            born_sup[1].cpu().numpy() +0.05*(born_sup[1].cpu().numpy() - born_inf[1].cpu().numpy()) )
                 ax.set_xlabel("x")
                 ax.set_ylabel("y")
+                ax.grid()
         
             plt.tight_layout()
             if save:
-                plt.savefig(os.path.join(dossier, f"{titre} {indx_batch}.png"))
-                plt.close()
+                plt.savefig(os.path.join(dossier, f"{titre} {indx_batch}.pdf"))
+                plt.show()
             else:
                 plt.show()
             indx_batch +=1
@@ -90,16 +93,20 @@ def aff_init(ech, born_inf, born_sup, d, batch_size, nb_cols, nb_rows,
                 y_coords = samples[:, 1].detach().cpu().numpy()
                 z_coords = samples[:, 2].detach().cpu().numpy()
                 ax.scatter(x_coords, y_coords, z_coords, s=10)
-                ax.set_xlim(born_inf[0].cpu().numpy(), born_sup[0].cpu().numpy())
-                ax.set_ylim(born_inf[1].cpu().numpy(), born_sup[1].cpu().numpy())
-                ax.set_zlim(born_inf[2].cpu().numpy(), born_sup[2].cpu().numpy())
+                ax.set_xlim(born_inf[0].cpu().numpy() -0.05*(born_sup[0].cpu().numpy() - born_inf[0].cpu().numpy()) , 
+                            born_sup[0].cpu().numpy() +0.05*(born_sup[0].cpu().numpy() - born_inf[0].cpu().numpy()) )
+                ax.set_ylim(born_inf[1].cpu().numpy() -0.05*(born_sup[1].cpu().numpy() - born_inf[1].cpu().numpy()) , 
+                            born_sup[1].cpu().numpy() +0.05*(born_sup[1].cpu().numpy() - born_inf[1].cpu().numpy()) )
+                ax.set_zlim(born_inf[2].cpu().numpy() -0.05*(born_sup[2].cpu().numpy() - born_inf[2].cpu().numpy()) , 
+                            born_sup[2].cpu().numpy() +0.05*(born_sup[2].cpu().numpy() - born_inf[2].cpu().numpy()) )
                 ax.set_xlabel("x")
                 ax.set_ylabel("y")
                 ax.set_zlabel("z")
+                ax.grid()
             plt.tight_layout()
             if save:
-                plt.savefig(os.path.join(dossier, f"{titre} {indx_batch}.png"))
-                plt.close()
+                plt.savefig(os.path.join(dossier, f"{titre} {indx_batch}.pdf"))
+                plt.show()
             else:
                 plt.show()
             indx_batch +=1
@@ -166,8 +173,8 @@ def proj_sur_un_plan_matrice(d, cloud_list, save=False,
     plt.suptitle("Matrix des projections", fontsize=16)
     plt.tight_layout()
     if save:
-        plt.savefig(os.path.join(dossier, "Matrice_projections.png"), bbox_inches="tight", dpi=300)
-        plt.close()
+        plt.savefig(os.path.join(dossier, "Matrice_projections.pdf"), bbox_inches="tight", dpi=300)
+        plt.show()
     else:
         plt.show()       
         
@@ -209,10 +216,11 @@ def proj_sur_un_plan(d, cloud_list, save=False,
                 for k, P in enumerate(cloud_list):
                     P_np = P.detach().cpu().numpy()
                     plt.scatter(P_np[:, i], P_np[:, j], color='gray')
-                plt.title(f"Nuages projeter dans les dimention {i} et {j}")
+                #plt.title(f"Nuages projeter dans les dimention {i} et {j}")
+                plt.title(f"Nuages projeté dans les dimension {i} et {j}")
                 if save:
-                    plt.savefig(os.path.join(dossier, f"All_nuage_opt_dim_{i}_{j}.png"))
-                    plt.close()
+                    plt.savefig(os.path.join(dossier, f"All_nuage_opt_dim_{i}_{j}.pdf"))
+                    plt.show()
                 else:
                     plt.show()
         proj_sur_un_plan_matrice(d, cloud_list, save, dossier)
@@ -224,8 +232,8 @@ def proj_sur_un_plan(d, cloud_list, save=False,
         plt.yticks([])
         plt.title("Nuages de points")
         if save:
-            plt.savefig(os.path.join(dossier, "All_nuage_opt.png"))
-            plt.close()
+            plt.savefig(os.path.join(dossier, "All_nuage_opt.pdf"))
+            plt.show()
         else:
             plt.show()      
     
@@ -303,11 +311,11 @@ def traitement_et_aff(cloud_list, weight_list, Nmin, Nmax, d, born_inf = torch.t
         plt.bar(x, y)
         plt.xlabel("Nombre de points")
         plt.ylabel("Effectif")
-        plt.title("Repartition fin de boucle")
+        plt.title("Nombre de nuage par cardinaux")
 
         if save:
-            plt.savefig(os.path.join(dossier, "repart_finb.png"))
-            plt.close()
+            plt.savefig(os.path.join(dossier, "repart_finb.pdf"))
+            plt.show()
         else:
             plt.show()
 

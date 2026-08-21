@@ -7,7 +7,7 @@ from geomloss import SamplesLoss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur):
+def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur, reopt):
     """
     Met à jour les paramètres de contrôle de l'optimisation en fonction de
     l'itération courante.
@@ -27,7 +27,8 @@ def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur):
             les poids doivent être optimisés.
         mu0 (float): Valeur initiale du coefficient de régularisation.
         amplificateur (float): Valeur actuelle du facteur d'amplification.
-
+        reop (bool, optional): influ sur turn_p si l'on reoptimise mais que 
+            l'on ne veux aps que les poids bouges.
     Returns:
         tuple:
             - **turn_p** (*bool*) : indique si l'itération doit être consacrée
@@ -45,7 +46,7 @@ def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur):
         positions(turn_p = True) ou les poids(turn_p = False). Le schéma 
         d'alternance dépend du nombre d'itérations déjà effectuées.
     """
-    turn_p = (((it % 5 != 0 and it < 300) or (it % 2 == 0 and it>300 and it<10000) or (it % 100 > 4 and it>10000)) or (Nmin==Nmax))
+    turn_p = (((it % 5 != 0 and it < 300) or (it % 2 == 0 and it>300 and it<10000) or (it % 100 > 4 and it>10000)) or (Nmin==Nmax) or reopt)
     if Nmin !=Nmax:
         if it>300 and peri_p ==0 and it % 200 == 0:
             peri_w = 10
@@ -143,18 +144,18 @@ def dist_min_par_ech(nech, cloud_list, P_masked, weight_list):
     
     for i in range(nech):
         dist_pour_intra = torch.cdist(P_masked[i], P_masked[i])
-        neg = (weight_list[i] < 0).nonzero(as_tuple=True)[0]
+        #neg = (weight_list[i] < 0).nonzero(as_tuple=True)[0]
         k, j = torch.triu_indices(dist_pour_intra.size()[0], dist_pour_intra.size()[0], offset=1)
-        mask = (~torch.isin(k, neg)) & (~torch.isin(j, neg))
-        k = k[mask]
-        j = j[mask]
+        #mask = (~torch.isin(k, neg)) & (~torch.isin(j, neg))
+        #k = k[mask]
+        #j = j[mask]
         intra_all_dist = dist_pour_intra[k,j]
         min_intra_dist[i] = outils.quasimin(intra_all_dist, 0.001)
     return min_intra_dist
 
 
-def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
-                              sinkhorn, ofr_comp, jln_mth, echdist=[], Wasserstein = True):
+def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, d, it,
+                              sinkhorn, ofr_comp, jln_mth, nb_quasi, echdist=[], Wasserstein = True):
     """
     Calcule une mesure de séparation entre un ensemble de nuages de points.
 
@@ -177,11 +178,14 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
             points.
         Nmin (int): Nombre minimal de points autorisé.
         Nmax (int): Nombre maximal de points autorisé.
+        d (int, optional): Dimension de l'espace.
         sinkhorn (callable): Fonction de calcul de la distance de Sinkhorn.
         ofr_comp (callable): Fonction utilisée pour comparer la distribution
             des distances observées à une distribution de référence.
         jln_mth (bool): Active la comparaison entre distributions de
             distances.
+        nb_quasi (int): nombre d'iteration ou la fonction objectif est
+            quasimin
         echdist (torch.Tensor, optional): Distribution de distances de
             référence utilisée lorsque ``jln_mth=True``.
             Défaut : ``[]``.
@@ -206,9 +210,9 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
     # calcul Sinkhorn pairwise (batché)
     if  Wasserstein:
         if Nmin != Nmax:
-            all_dist = sinkhorn(w_i, P_i, w_j, P_j)
+            all_dist = 2 * sinkhorn(w_i, P_i, w_j, P_j)
         else:
-            all_dist = sinkhorn(P_i, P_j)
+            all_dist = 2 * sinkhorn(P_i, P_j)
     else:
         sigma = 0.5
         
@@ -241,12 +245,13 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
         all_dist = MMD[i, j]
     
     if jln_mth:
-        return ofr_comp(all_dist.view(-1,1), echdist.view(-1,1))
+        all_dist = all_dist/d
+        return ofr_comp(all_dist.view(-1,1), echdist.view(-1,1)), all_dist
     else:
-        if it>(200):
-            return torch.min(all_dist)
+        if it>(nb_quasi):
+            return -torch.min(all_dist), all_dist
         else:
-            return outils.quasimin(all_dist, .05)
+            return -outils.quasimin(all_dist, .05), all_dist
         
 
 
@@ -254,7 +259,7 @@ def calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it,
 
 
 def calc_loss_p(a, b, d, cloud_list, pds0, loss_dist, pena_repul,
-                nb_samples, intra_repul_pena, mu0):
+                nb_samples, intra_repul_pena, mu):
     """
     Calcule la fonction de coût utilisée lors de l'optimisation des positions
     des points.
@@ -276,11 +281,11 @@ def calc_loss_p(a, b, d, cloud_list, pds0, loss_dist, pena_repul,
         pds0 (float): Coefficient associé au terme de distance entre nuages.
         loss_dist (torch.Tensor): Critère mesurant la séparation entre les
             nuages.
-        pena_rep (torch.Tensor): Pénalité de répulsion entre les points.
+        pena_repul (torch.Tensor): Pénalité de répulsion entre les points.
         nb_samples (int): Nombre de nuages considérés.
         intra_repul_pena (torch.Tensor): Terme de pénalisation basé sur l'inertie ou
             la répartition des solutions.
-        mu0 (float): Coefficient de régularisation associé à la contrainte de
+        mu (float): Coefficient de régularisation associé à la contrainte de
             domaine.
 
     Returns:
@@ -288,7 +293,7 @@ def calc_loss_p(a, b, d, cloud_list, pds0, loss_dist, pena_repul,
         globale.
     """
     regp = torch.mean(torch.stack([outils.borne(P ,a ,b , d) for P in cloud_list]))
-    return (- pds0 * loss_dist + nb_samples/5 * intra_repul_pena + mu0 * regp + pena_repul)
+    return (pds0 * loss_dist + nb_samples/5 * intra_repul_pena + mu * regp + pena_repul)
 
 
 def calc_loss_w(Nmin, Nmax, nb_points, num_sizes, cloud_list, nb_pnt_possible,
@@ -398,16 +403,17 @@ def calc_loss_w(Nmin, Nmax, nb_points, num_sizes, cloud_list, nb_pnt_possible,
         repul_z += outils.w_penal(w)
     repul_z = repul_z/nb_samples
     
-    if counter_w_opt == 1 or counter_w_opt% 50 == 0 and it<2000:
+    if counter_w_opt == 1 or counter_w_opt% 50 == 0 and it<1000:
          with torch.no_grad():
-             pds1 = torch.min((beta/alpha) * torch.abs(loss_dist)/pena, torch.tensor(.1)) * pds0
-             pds2 = torch.min((gamma/alpha) * torch.abs(loss_dist)/regw,  torch.tensor(mu)) * pds0
-             pds3 = torch.min((delta/alpha) * torch.abs(loss_dist)/repul_z, torch.tensor(1e-5)) * pds0
+             pds1 = torch.min(torch.max((beta/alpha) * torch.abs(loss_dist)/pena, torch.tensor(.1)), torch.tensor(10)) * pds0
+             pds2 = torch.min(torch.max((gamma/alpha) * torch.abs(loss_dist)/regw,  torch.tensor(mu)), torch.tensor(.01)) * pds0
+             pds3 = torch.min(torch.max((delta/alpha) * torch.abs(loss_dist)/repul_z, torch.tensor(1e-1)), torch.tensor(1e-3)) * pds0
+             #psd4b = torch.min((ksi/alpha) * torch.abs(loss_dist)/inert_pena, torch.tensor(100)) * pds0
     
     if torch.isnan(pds2) and not torch.isnan(regw):
         with torch.no_grad():
-            pds2 = torch.min((gamma/alpha) * torch.abs(loss_dist)/regw,  torch.tensor(mu)) * pds0
-            print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
+            pds2 = torch.min(torch.max((gamma/alpha) * torch.abs(loss_dist)/regw,  torch.tensor(mu)), torch.tensor(.01)) * pds0
+
 
     if torch.isnan(regw):
         return (- pds0 * loss_dist + pds0 * 1000 * penalty_size + pds1 * pena + pds3 * repul_z ), counter_w_opt, pds1, pds2, pds3
@@ -415,9 +421,15 @@ def calc_loss_w(Nmin, Nmax, nb_points, num_sizes, cloud_list, nb_pnt_possible,
         return (- pds0 * loss_dist + pds1 * pena +  max((20/(it+1)), 1e-2)* pds2 * regw + pds3 * repul_z), counter_w_opt, pds1, pds2, pds3
 
 
+
+
+
+
+
+
 #Fonction principale d'optimisation multi-nuages par gradient alterné sur les positions et les poids de sélection.
 def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], born_inf = torch.tensor([0,0]), 
-                born_sup = torch.tensor([1,1]), d = 2, mu0 = 7e-4, born_disper_inf = 0, temp = 2.3, 
+                born_sup = torch.tensor([1,1]), d = 2, mu0 = 7e-4, temp = 3.5, reopt = False,
                 plot_hist = False, inert_pena_ch = True, jln_mth = False, tol = 1e-6, repul_param = 0, Wasserstein = True):
     """
     Exécute la boucle principale d'optimisation des nuages de points.
@@ -455,16 +467,14 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         d (int, optional): Dimension de l'espace. Défaut : ``2``.
         mu0 (float, optional): Coefficient initial de régularisation.
             Défaut : ``7e-4``.
-        born_disper_inf (float, optional): Borne inférieure utilisée lors
-            de l'évaluation de la dispersion interne. Cette quantité est
-            également réutilisée lors du calcul de certaines pénalisations
-            de répulsion. Défaut : ``0``.
         temp (float, optional): Température utilisée pour le comptage
             différentiable des cardinalités. Une valeur élevée augmente la
             précision du comptage mais peut manquer certaines contributions ;
             une valeur plus faible rend le comptage plus lisse mais peut
             attribuer un même nuage à plusieurs cardinalités voisines.
             Défaut : ``2.3``.
+        reopt (bool, optional): influ sur turn_p si l'on reoptimise mais que 
+            l'on ne veux aps que les poids bouges.
         plot_hist (bool, optional): Affiche différents graphiques de suivi en
             fin d'optimisation. Défaut : ``False``.
         inert_pena_ch (bool, optional): Active la pénalité visant à imposer
@@ -494,7 +504,34 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         raise ValueError("echdist doit etre ranseigner et non vide pour cette methode(jln_mth)")
     #initialisation de toutes les variable necessaire au bon fonctionnement de la boucle d'optimisation 
     #ainsi que celle permettant de recuperer les historique de certaine de nos variable
-    it = 0
+    if reopt:
+        it = 800
+    else:
+        it = 0
+        
+    if jln_mth:
+        from scipy import stats
+        data1 = echdist.detach().cpu().numpy()
+
+
+        ecdf1 = stats.ecdf(data1)
+
+        # valeurs x et F(x)
+        x1 = ecdf1.cdf.quantiles
+        y1 = ecdf1.cdf.probabilities
+
+
+
+        x1 = np.concatenate(([-0.2], x1, [1.1]))
+        y1 = np.concatenate(([0], y1, [1]))
+
+
+        plt.step(x1, y1, where="post", label="Uniforme")
+        plt.xlabel("x")
+        plt.ylabel("F(x)")
+        plt.title("Fonction de répartition empirique")
+        plt.legend()
+        plt.show()
     peri_p = 0
     peri_w = 0
     alpha = 0.70
@@ -517,6 +554,14 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
     cnt = 0
     pds1 = pds2 = pds3 = 1
     nbp_possible = torch.linspace(Nmin, Nmax, Nmax - Nmin +1, device=device)
+    born_disper_inf = repul_param
+    if not jln_mth:
+        if inert_pena_ch:
+            nb_quasi = 300
+        else:
+            nb_quasi = 1000
+    else:
+        nb_quasi = 0
     
     sinkhorn = SamplesLoss(
         loss="sinkhorn",
@@ -544,7 +589,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         born_disper = 1.2 * Nmax**(-1/d)
     
     while it<30000 :
-        turn_p, peri_p, peri_w, mu, amplificateur = variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur)
+        turn_p, peri_p, peri_w, mu, amplificateur = variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur, reopt)
         
         if turn_p:
             optimizer = optimizer_P
@@ -557,22 +602,25 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         P_masked, m_masked, nb_points = calc_point_poid_nb_inter(nb_samples, Nmax, d,
                                         cloud_list, weight_list, amplificateur, turn_p)
         
-        loss_dist = calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, it, sinkhorn
-                                              , ofr_comp, jln_mth, echdist, Wasserstein)
+        loss_dist, all_dist = calc_min_dist_inter_nuage(nb_samples, P_masked, m_masked, Nmin, Nmax, d, it, sinkhorn
+                                              , ofr_comp, jln_mth, nb_quasi, echdist, Wasserstein)
         
-        min_intra_dist = dist_min_par_ech(nb_samples, cloud_list,P_masked, weight_list)
-        
-        if inert_pena_ch:
-            inert_pena, born_disper_inf, born_disper = outils.cvm_uniform_loss(min_intra_dist,born_inf = born_disper_inf, born_sup =born_disper)
-        else:
-            inert_pena = 0
         
         if turn_p:
-            if repul_param > 1e-5:
-                pena_rep = torch.stack([outils.repulsion_penalty3(P, repul_param) for P in cloud_list]).mean()
+            if inert_pena_ch:
+                min_intra_dist = dist_min_par_ech(nb_samples, cloud_list,P_masked, weight_list)
+                inert_pena, born_disper_inf, born_disper = outils.cvm_uniform_loss(min_intra_dist,born_inf = born_disper_inf, born_sup =born_disper)
+            else:
+                inert_pena = 0
+                
+                
+            if repul_param > tol*10:
+                pena_rep = torch.stack([outils.repulsion_penalty3(P, repul_param) for P in cloud_list]).sum()
             else:
                 pena_rep = 0
-            loss = calc_loss_p(born_inf,born_sup,d,cloud_list, pds0, loss_dist, pena_rep, nb_samples, inert_pena, mu0)
+                
+                
+            loss = calc_loss_p(born_inf, born_sup, d, cloud_list, pds0, loss_dist, pena_rep, nb_samples, inert_pena, mu)
             if np.abs(prev_ploss - loss.item())<1e-5:
                 peri_w = 10
                 
@@ -585,27 +633,28 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
             if np.abs(prev_wloss - loss.item())<1e-5:
                 peri_p = 10
          
-
-        if it > 800 :
-            if turn_p:
-                if torch.abs(loss - prev_ploss) + np.abs(prev_wloss - prev_prev_wloss)< tol:
-                    break
-            else :
-                if torch.abs(loss - prev_wloss) + np.abs(prev_ploss - prev_prev_ploss)< tol:
-                    break
-                
-            if torch.abs(loss_dist - prev_loss_dist)< tol/2 and it > 1500:
-                cntlds +=1
-                if cntlds >7:
-                    break
-            else:
-                cntlds = 0
-        
-        if peri_w >0 and torch.abs(loss - prev_wloss)<tol*10:
-            peri_w = 0
+        #Condition d'arret
+        with torch.no_grad():
+            if it > 800 :
+                if turn_p:
+                    if torch.abs(loss - prev_ploss) + np.abs(prev_wloss - prev_prev_wloss)< tol:
+                        break
+                else :
+                    if torch.abs(loss - prev_wloss) + np.abs(prev_ploss - prev_prev_ploss)< tol:
+                        break
+                    
+                if torch.abs(loss_dist - prev_loss_dist)< tol/2 and it > 1500:
+                    cntlds +=1
+                    if cntlds >100:
+                        break
+                else:
+                    cntlds = 0
             
-        if peri_p >0 and torch.abs(loss - prev_ploss)<tol*10:
-            peri_p = 0
+            if peri_w >0 and torch.abs(loss - prev_wloss)<tol*100:
+                peri_w = 0
+                
+            if peri_p >0 and torch.abs(loss - prev_ploss)<tol*100:
+                peri_p = 0
         
         loss.backward()
 
@@ -644,20 +693,57 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         prev_loss_dist = loss_dist
         it +=1
     
-    if not jln_mth:
+    if not jln_mth and inert_pena_ch:
         sorted_intra_min, indice = torch.sort(min_intra_dist)
         indice = indice.cpu()
     
         cloud_list = [cloud_list[i] for i in indice]
-        weight_list = [weight_list[i] for i in indice]
+        weight_list = [weight_list[i] for i in indice]  
         
     if plot_hist:
-        plt.hist(min_intra_dist.detach().cpu().numpy())
-        plt.show()
+        if inert_pena_ch:
+            plt.hist(min_intra_dist.detach().cpu().numpy())
+            plt.show()
         
         plt.plot(hst_lossw[500:])
         plt.show()
         
         plt.plot(hist_loss_cl[500:])
         plt.show()
+    
+    if jln_mth:
+        from scipy import stats
+        data1 = echdist.detach().cpu().numpy()
+        data2 =  all_dist.detach().cpu().numpy()
+
+
+        ecdf1 = stats.ecdf(data1)
+
+        # valeurs x et F(x)
+        x1 = ecdf1.cdf.quantiles
+        y1 = ecdf1.cdf.probabilities
+
+        ecdf2 = stats.ecdf(data2)
+
+        # valeurs x et F(x)
+        x2 = ecdf2.cdf.quantiles
+        y2 = ecdf2.cdf.probabilities
+
+        x1 = np.concatenate(([-0.2], x1, [1.1]))
+        y1 = np.concatenate(([0], y1, [1]))
+
+        x2 = np.concatenate(([-0.2], x2, [1.1]))
+        y2 = np.concatenate(([0], y2, [1]))
+
+        plt.step(x1, y1, where="post", label="Uniforme")
+        plt.step(x2, y2, where="post", label="avec poid et all")
+        plt.xlabel("x")
+        plt.ylabel("F(x)")
+        plt.title("Fonction de répartition empirique")
+        plt.legend()
+        plt.show()
+    
+    
+    
+    
     return cloud_list, weight_list

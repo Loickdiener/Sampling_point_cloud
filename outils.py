@@ -37,7 +37,7 @@ def repulsion_penalty3(P, tol=1e-2):
     """
     dist = torch.cdist(P, P)  # (n, n)
     mask = ~torch.eye(dist.size(0), dtype=bool, device=P.device)
-    return (torch.relu(1*(tol - dist[mask]))).mean()
+    return (torch.relu(10*(tol - dist[mask]))).mean()
 
 
 
@@ -369,7 +369,7 @@ def distsm(nb_point):
     return torch.sum(torch.stack([(x - y)**2 for x in nb_point for y in nb_point]))/2
 
 
-def soft_count_near(x, c=0.0, temperature=10.0):
+def soft_count_near(x, c=0.0, temperature=5.0):
     """
     Calcule un comptage souple (différentiable) des valeurs proches d'une
     cible donnée.
@@ -381,13 +381,13 @@ def soft_count_near(x, c=0.0, temperature=10.0):
         temperature (float, optional): Paramètre contrôlant la largeur de la
             zone d'influence autour de ``c``. Plus cette valeur est grande,
             plus seules les valeurs très proches de ``c`` contribuent au
-            résultat. Défaut : ``10.0``.
+            résultat. Défaut : ``5.0``.
 
     Returns:
         torch.Tensor: Valeur scalaire représentant le comptage souple des
         éléments proches de ``c``.
     """
-    return torch.exp(-temperature * (x - c)**2).sum()
+    return 10 * torch.exp(-temperature * (x - c)**2).sum()
 
 def w_penal(w):
     """
@@ -401,7 +401,7 @@ def w_penal(w):
         torch.Tensor: Valeur scalaire correspondant à la somme des termes
         ``exp(-w²)``.
     """
-    return torch.exp(-w**2).sum()
+    return torch.exp(-w**2).mean()
 
 
 def uniform_test_stat(inertias, born_inf=0., born_sup=nech**(-1/d)):
@@ -441,7 +441,7 @@ def uniform_test_stat(inertias, born_inf=0., born_sup=nech**(-1/d)):
 
 
 
-def cvm_uniform_loss(inertias, born_inf=0, born_sup=1.2 * Nmax**(-1/d)):
+def cvm_uniform_loss(inertias, born_inf=0, born_sup=20**(-1/2)):
     """
     Calcule une perte de type Cramér-von Mises mesurant l'écart entre la
     distribution des valeur et une loi uniforme.
@@ -454,7 +454,7 @@ def cvm_uniform_loss(inertias, born_inf=0, born_sup=1.2 * Nmax**(-1/d)):
         born_sup (float, optional): Borne supérieure utilisée pour la
             normalisation. Si elle est inférieure à la plus grande inertie
             observée, elle est automatiquement augmentée. Défaut :
-            ``1.2 * Nmax**(-1/d)``.
+            ``20**(-1/2)``.
 
     Returns:
         tuple:
@@ -463,8 +463,9 @@ def cvm_uniform_loss(inertias, born_inf=0, born_sup=1.2 * Nmax**(-1/d)):
             - **born_sup** (*float ou torch.Tensor*) : borne supérieure finale
               utilisée pour la normalisation.
     """
-    if torch.tensor(born_sup)<torch.max(inertias):
-        born_sup= torch.max(inertias) + (born_sup-born_inf)*.01
+    with torch.no_grad() :
+        if torch.tensor(born_sup)<torch.max(inertias):
+            born_sup= torch.max(inertias) + (born_sup-born_inf)*.001
     u = (inertias - born_inf) / (born_sup - born_inf)
     u_sorted, _ = torch.sort(u)
 
@@ -510,7 +511,7 @@ def test_dist_a_unif(inertias, born_inf=0., born_sup=1.2 * Nmax**(-1/d)):
     return val, born_inf, born_sup
 
 
-def dist2cp(X, Y, lx=None, ly=None):
+def dist2cp(X, Y):
     """
     Calcule la matrice des distances euclidiennes au carré entre deux ensembles
     de points.
@@ -520,20 +521,11 @@ def dist2cp(X, Y, lx=None, ly=None):
             ensemble de points.
         Y (np.ndarray): Tableau de forme ``(n_y, d)`` contenant le second
             ensemble de points.
-        lx (int, optional): Nombre de points de ``X`` à considérer. Si non
-            renseigné, utilise ``len(X)``.
-        ly (int, optional): Nombre de points de ``Y`` à considérer. Si non
-            renseigné, utilise ``len(Y)``.
 
     Returns:
-        np.ndarray: Matrice de forme ``(lx, ly)`` dont l'élément ``(i, j)``
+        np.ndarray: Matrice de forme ``(len(X), len(Y))`` dont l'élément ``(i, j)``
         contient la distance euclidienne au carré entre ``X[i]`` et ``Y[j]``.
     """
-    if(lx == None):
-        lx = len(X)
-    if(ly == None):  
-        ly = len(Y)
-    C = np.zeros([lx,ly])
     C = np.sum((X[:, None, :] - Y[None, :, :])**2, axis=2)
     return C
 

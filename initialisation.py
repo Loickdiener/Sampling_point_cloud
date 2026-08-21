@@ -39,7 +39,7 @@ def LHS(nb_rechlhs, nb_sample, d):
         list[np.ndarray]: Liste de permutations correspondant à la meilleure
         configuration LHS trouvée selon le critère maximin.
     """    
-    maximindist = 0 #initialisation de notre maximum de disteance minimum
+    maximindist = -0.1 #initialisation de notre maximum de disteance minimum
     bestperme = []  #initialisation de notre liste qui contient notre meilleur paterne
     for i in range(nb_rechlhs):
         
@@ -163,7 +163,7 @@ def constru_init(param_beta, born_inf, born_sup, init_coin, Nmax, d):
     
 #Fonction principale de génération des conditions initiales pour les algorithmes d'optimisation de nuages de points.
 def crea_ech_ini(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup = torch.tensor([1,1]), d= 2,nb_rechlhs = 60000,
-                 all_opt = True, aff = True, for_torch = True, seed = None, veux_coin = False, lhs = False):
+                 all_opt = True, aff = True, for_torch = True, veux_coin = False, lhs = False):
     """
     Génère un ensemble de nuages de points servant d'initialisations pour une
     procédure d'optimisation.
@@ -198,8 +198,6 @@ def crea_ech_ini(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup
             générées. Défaut : ``True``.
         for_torch (bool, optional): Si ``True``, active le calcul des gradients
             sur les nuages générés. Défaut : ``True``.
-        seed (int, optional): Graine utilisée pour initialiser les générateurs
-            pseudo-aléatoires NumPy, PyTorch et Python.
         veux_coin (bool, optional): Si ``True``, ajoute des configurations
             situées dans les coins du domaine lorsque le mode LHS est actif.
             Défaut : ``False``.
@@ -216,14 +214,6 @@ def crea_ech_ini(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup
         ``requires_grad=True`` afin de permettre leur optimisation par
         descente de gradient.
     """
-    #set up de la seed si voulue
-    if seed is not None:
-        random.seed(seed)
-        np.random.seed(seed)
-        rng.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
     
     if lhs:
         if nb_sample > 5 and veux_coin:
@@ -242,7 +232,7 @@ def crea_ech_ini(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup
         else:
             N = np.random.randint(Nmin, (Nmax+1), nb_sample)
             for i in range(nb_sample):
-                argtir.append([alpha[i], beta[i], N]) #mise en forme de nos information
+                argtir.append([alpha[i], beta[i], N[i]]) #mise en forme de nos information
     
         ech = constru_init(argtir, born_inf, born_sup, init_coin, Nmax, d)
         
@@ -292,7 +282,7 @@ def initialisation(Nmin, Nmax, nb_sample,jln_mth = False, born_inf = torch.tenso
         nb_rechlhs (int, optional): Nombre de tirages LHS candidats utilisés
             lors de la recherche d'un plan maximin. Défaut : ``60000``.
         all_opt (bool, optional): Si ``True``, toutes les configurations sont
-            générées avec ``Nmax`` points. Défaut : ``True``.
+            générées avec ``Nmax`` points. Défaut : ``True``.F
         aff (bool, optional): Si ``True``, affiche les configurations
             générées. Défaut : ``True``.
         for_torch (bool, optional): Si ``True``, active le calcul de gradient
@@ -315,10 +305,22 @@ def initialisation(Nmin, Nmax, nb_sample,jln_mth = False, born_inf = torch.tenso
                   de points d'un nuage uniforme de référence lorsque
                   ``jln_mth=True``.
     """
+    #set up de la seed si voulue
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+        rng.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        
+        
     if not jln_mth:
         return crea_ech_ini(Nmin, Nmax, nb_sample, born_inf, born_sup, d,nb_rechlhs,
-                         all_opt, aff, for_torch, seed, veux_coin, lhs), []
+                         all_opt, aff, for_torch, veux_coin, lhs), []
     else:
+        P_list = crea_ech_ini(Nmin, Nmax, nb_sample, born_inf, born_sup, d,nb_rechlhs,
+                         all_opt, aff, for_torch, veux_coin, lhs)
         ncpu = np.max([int(nb_sample + 5),50])
         echcpu = rng.uniform(0,1,(ncpu,d))
         echdistpr = outils.dist2cp(echcpu, echcpu)
@@ -330,8 +332,7 @@ def initialisation(Nmin, Nmax, nb_sample,jln_mth = False, born_inf = torch.tenso
         echdist = np.sort(echdist)
         echdist = ((echdist/d))
         echdist = torch.tensor(echdist, dtype=torch.get_default_dtype())
-        return crea_ech_ini(Nmin, Nmax, nb_sample, born_inf, born_sup, d,nb_rechlhs,
-                         all_opt, aff, for_torch, seed, veux_coin, lhs), echdist
+        return P_list, echdist
     
     
     

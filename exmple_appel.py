@@ -5,6 +5,8 @@ import initialisation
 import optim
 import time
 import warnings
+import os
+import shutil
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -95,7 +97,7 @@ def remise_a_niveau(a, b, a_reel, retour_param, nech, P_list):
 
 #comportement pouvant etre etrange si une des dimention est beaucoup plus petites que les autre de l'ordre de 1 pour 100 voir 1 pour 1000
 def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor([1,1]), d= 2,nrechlhs = 60000, Wasserstein = True, jln_mth = False,
-                     mu0 = 7e-4, born_disper_inf = 0, temp = 2.3, plot_hist = False, inert_pena_ch = True, tol = 1e-6, repul_param = 0,
+                     mu0 = 7e-4, temp = 3.5, plot_hist = False, inert_pena_ch = True, tol = 1e-6, repul_param = 0,
                      all_opt = True, aff = True, for_torch = True, seed = None, veux_coin = False, lhs = False, aff_repart = True,
                      dossier = "resultat_optim", save = False,  export_all = False, aff_fin_nage = True, aff_sup_nuage = True):
     """
@@ -129,8 +131,6 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
             Défaut : ``True``.
         mu0 (float, optional): Coefficient initial de régularisation.
             Défaut : ``7e-4``.
-        born_disper_inf (float, optional): Borne inférieure utilisée lors
-            de l'évaluation de la dispersion interne. Défaut : ``0``.
         temp (float, optional): Température utilisée dans le comptage
             différentiable des cardinalités. Défaut : ``2.3``.
         plot_hist (bool, optional): Affiche des graphiques de diagnostic
@@ -185,6 +185,27 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
         :func:`remise_a_niveau`.
     """
     
+    if save and os.path.exists(dossier):
+    
+        while True:
+            reponse = input(
+                f"Le dossier '{dossier}' existe déjà. Remplacer ? (o/n) : "
+            ).strip().lower()
+    
+            if reponse in ("o", "oui"):
+                shutil.rmtree(dossier)  # suppression du dossier et de son contenu
+                break
+    
+            elif reponse in ("n", "non"):
+                save = False
+                break
+    
+            else:
+                print("Réponse invalide. Entrez 'o' ou 'n'.")
+    
+    if save:
+        os.makedirs(dossier)
+        
     
     a = init_born(a, d)
     b = init_born(b, d)
@@ -201,8 +222,8 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
                 w[ind] = -w[ind]
     else: 
         w_list = []
-    P_list, w_list = optim. optim_boucl(P_list, w_list, Nmin, Nmax, nech, echdist, a, b, 
-                    d, mu0, born_disper_inf, temp, plot_hist, inert_pena_ch, 
+    P_list, w_list = optim.optim_boucl(P_list, w_list, Nmin, Nmax, nech, echdist, a, b, 
+                    d, mu0, temp, False, plot_hist, inert_pena_ch, 
                     jln_mth, tol, repul_param, Wasserstein)
     
     a, b, P_list = remise_a_niveau(a, b, a_reel, retour_param, nech, P_list)
@@ -211,6 +232,9 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
                       aff_fin_nage = aff_fin_nage, aff_sup_nuage = aff_sup_nuage,
                       save = save, dossier = dossier, aff_repart = aff_repart)
     
+    for i in range(nech):
+        P_final[i] = P_final[i].cpu().numpy()
+    
     return P_final #si tu veux en faire qqc directement ici
     
     
@@ -218,8 +242,9 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
 if __name__ == '__main__':
     start = time.perf_counter()
     torch.set_default_dtype(torch.float32) #a set toujours avant d'appeler la fonction attention beaucoup plus rappide en float32 qu'en float64
-    P_list_f = creation_dun_ech(Nmin = 24, Nmax = 30, nech = 100, a = torch.tensor([15.,-30.,0.]), b = torch.tensor([23.,-22.,8.]), d = 6,
-                     plot_hist = True, inert_pena_ch = True, )
+    P_list_f = creation_dun_ech(Nmin = 18, Nmax = 25, nech = 100, a = torch.tensor([200.365,-4250.2154]), b = torch.tensor([208.365,-4242.2154]), d = 2,
+                     plot_hist = True, inert_pena_ch = True, lhs = False)
+
     end = time.perf_counter()
     print(f"Temps d'exécution : {end - start:.6f} secondes")
     
