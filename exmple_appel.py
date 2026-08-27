@@ -97,7 +97,7 @@ def remise_a_niveau(a, b, a_reel, retour_param, nech, P_list):
 
 #comportement pouvant etre etrange si une des dimention est beaucoup plus petites que les autre de l'ordre de 1 pour 100 voir 1 pour 1000
 def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor([1,1]), d= 2,nrechlhs = 60000, Wasserstein = True, jln_mth = False,
-                     mu0 = 7e-4, temp = 3.5, plot_hist = False, inert_pena_ch = True, tol = 1e-6, repul_param = 0,
+                     mu0 = 7e-4, temp = 3.5, plot_hist = False, inert_pena_ch = True, tol = 4e-7, repul_param = 0,
                      all_opt = True, aff = True, for_torch = True, seed = None, veux_coin = False, lhs = False, aff_repart = True,
                      dossier = "resultat_optim", save = False,  export_all = False, aff_fin_nage = True, aff_sup_nuage = True):
     """
@@ -242,8 +242,12 @@ def creation_dun_ech(Nmin, Nmax, nech, a = torch.tensor([0,0]), b = torch.tensor
 if __name__ == '__main__':
     start = time.perf_counter()
     torch.set_default_dtype(torch.float32) #a set toujours avant d'appeler la fonction attention beaucoup plus rappide en float32 qu'en float64
+    """
     P_list_f = creation_dun_ech(Nmin = 18, Nmax = 25, nech = 100, a = torch.tensor([200.365,-4250.2154]), b = torch.tensor([208.365,-4242.2154]), d = 2,
                      plot_hist = True, inert_pena_ch = True, lhs = False)
+    """
+    X0_jln = creation_dun_ech(Nmin = 18, Nmax = 25, nech = 36, jln_mth = True, Wasserstein = True,
+                     inert_pena_ch = False, repul_param = 0, aff = True, seed = 12345678, lhs = False, save = True)
 
     end = time.perf_counter()
     print(f"Temps d'exécution : {end - start:.6f} secondes")

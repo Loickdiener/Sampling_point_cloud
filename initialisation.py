@@ -247,7 +247,7 @@ def crea_ech_ini(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup
             
             
     if aff:
-        affichage.aff_init(ech, born_inf,born_sup, d, 25, 5, 5, titre = "nuage_ini")
+        affichage.aff_init(ech, born_inf,born_sup, d, 9, 3, 3, titre = "nuage_ini")
             
     return ech
 

@@ -508,30 +508,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         it = 800
     else:
         it = 0
-        
-    if jln_mth:
-        from scipy import stats
-        data1 = echdist.detach().cpu().numpy()
-
-
-        ecdf1 = stats.ecdf(data1)
-
-        # valeurs x et F(x)
-        x1 = ecdf1.cdf.quantiles
-        y1 = ecdf1.cdf.probabilities
-
-
-
-        x1 = np.concatenate(([-0.2], x1, [1.1]))
-        y1 = np.concatenate(([0], y1, [1]))
-
-
-        plt.step(x1, y1, where="post", label="Uniforme")
-        plt.xlabel("x")
-        plt.ylabel("F(x)")
-        plt.title("Fonction de répartition empirique")
-        plt.legend()
-        plt.show()
+    
     peri_p = 0
     peri_w = 0
     alpha = 0.70
@@ -566,7 +543,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
     sinkhorn = SamplesLoss(
         loss="sinkhorn",
         p=2,
-        blur= 0.15) # Wassersteine pour calculer les distance inter nuage
+        blur= 0.15 + 0.25*jln_mth) # Wassersteine pour calculer les distance inter nuage
 
     ofr_comp = SamplesLoss(
         loss="sinkhorn",
@@ -645,15 +622,15 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
                     
                 if torch.abs(loss_dist - prev_loss_dist)< tol/2 and it > 1500:
                     cntlds +=1
-                    if cntlds >100:
+                    if cntlds >10:
                         break
                 else:
                     cntlds = 0
             
-            if peri_w >0 and torch.abs(loss - prev_wloss)<tol*100:
+            if peri_w >0 and torch.abs(loss - prev_wloss)<tol*10:
                 peri_w = 0
                 
-            if peri_p >0 and torch.abs(loss - prev_ploss)<tol*100:
+            if peri_p >0 and torch.abs(loss - prev_ploss)<tol*10:
                 peri_p = 0
         
         loss.backward()
