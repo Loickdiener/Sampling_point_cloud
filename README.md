@@ -1,4 +1,4 @@
-# Sampling_point_cloud_test
+# Sampling_point_cloud
 
 
 A ecrire plus tard
