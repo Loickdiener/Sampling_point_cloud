@@ -86,15 +86,18 @@ Les image sauvegarder represente :
 - une matrice rassemblant chacune des projection dans les different plan precedement enregistrer
 - Si les nuage sont en dimension 2 ou 3, chacun des nuage de points par batch de 9 nuages
 
-
 ## Les méthodes d'echantillonnage disponible
-........
+Plusieurs méthode d'échantillonnage sont disponnible avec ce scripte. Pour choisir la méthode utilisé par la fonction creation_dun_ech il faut joué sur les paramètre suivant :
+- jln_mth initialement à False, permet d'échantillonné selon la méthode jln
+- inert_pena_ch initialement à True, permet d'échantillonner selon la méthode de répulsion adaptative
+- repul_param initialement à 0, permet d'imposé un écartement minimal entre les points dans chaque nuage de l'échantillon
+
+Si jln_mth et inert_pena_ch sont tout deux à False et repul_param est à 0, alors l'échantillon obtenu en sortie de l'algorithme est celui obtenue avec un maximin sans pénalisation.
+
+Pour chacune de ces méthode, il est possible de choisir une initialisation par LHS ou un initialisation par un simple tirage uniforme. Cependant, nous préconisons d'utiliser le lhs uniquement pour la méthode jln ou l'on observe une convergence plus rapide en moyenne, la ou l'on observe plutot le contraire avec les méthode basé sur le maximin. Mais quelque soit l'initialisation les méthode converge et resorte des résultat satisfaisant.
 
 
-
-Par défaut la méthode échantillonnage utiliser est la méthode par répulsion adaptative, si une autre méthode d'échantillonnage est souhaité il faut jouer sur les variable jln_mth initialement à False permet de choisir ou non la méthode jln, inert_pena_ch initialement à True permet de choisir ou non la méthode avec répulsion adaptative, repul_param initialement à 0 et etant un réèl permet de définir un écartement minimal entre deux points d'un nuage. Ainsi si chacune de ces variable est à False ou à 0 alors la méthode maximin sans penalisation est alors lancé. 
-
-Enfin si vous voulez simplement obtenir les nuage de points obtenue avec la méthode par LHS décrite dans le rapport, il vous suffit d'executé le code :
+Il est également possible d'optenir un échantillon avec la méthode par LHS qui est utiliser pour l'initialisation de certaine de nos méthode. Pour ceci il suffit d'utiliser le code suivant :
 
 ```python
 import initialisation
@@ -102,9 +105,10 @@ import initialisation
 X0_lhs, _ = initialisation.initialisation(Nmin, Nmax, nb_sample, born_inf, born_sup, d
                  all_opt = False, aff = False, for_torch = False, lhs = True)
 ```
-Avec les 6 premières variables ayant la meme fonction que dans l'exemple d'execusion precedent et les variable suivante etant simplement pour ne pas obtenir le formalisme necessaire au lancement de l'optimisation sur les nuage de points, ce qui compliquerait inutiliement l'affichage et la comprehension des nuage en sortie.
+Avec les 6 premières variables ayant la meme fonction que dans l'exemple d'execusion precedent et les variable suivante ayant pour but de renvoyer le nuage de points dans le meme forma que la sortie de l'autre code.
 
-Le choix de l'initialisation est également possible pour les différente méthode d'echantillonnage contenant une optimisation. Nous préconisons d'utiliser le lhs uniquement pour la méthode jln ou l'on observe une convergence plus rapide en moyenne, la ou l'on observe plutot le contraire avec les méthode basé sur le maximin. Mais quelque soit l'initialisation les méthode converge et resorte des résultat satisfaisant.
+
+## Exemple d'appelle
 
 
 
