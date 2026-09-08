@@ -44,14 +44,14 @@ Pour générer votre propre échantillon de nuages de points à partir de ces co
 ```python
 import exmple_appel
 
-P_list_f = exmple_appel.creation_dun_ech(Nmin, Nmax, nech, a, b, d)
+P_list_f = exmple_appel.creation_dun_ech(Nmin, Nmax, nech, born_inf, born_sup, d)
 ```
 Avec :
 - Nmin le nombre minimum de points dans les nuages générés
 - Nmax le nombre maximum de points dans les nuages générés
 - nech le nombre de nuages de points à générer
-- a la borne inférieure de l’hyper-pavé dans lequel les nuages de points vivent
-- b la borne supérieure de l’hyper-pavé dans lequel les nuages de points vivent
+- born_inf la borne inférieure de l’hyper-pavé dans lequel les nuages de points vivent
+- born_sup la borne supérieure de l’hyper-pavé dans lequel les nuages de points vivent
 - d la dimension dans laquelle les nuages de points vivent
 
 
@@ -115,7 +115,7 @@ Le code suivant permet ainsi d'obtenir les résultats avec la méthode avec rép
 ```python
 import exmple_appel
 
-P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nech = 100, jln_mth = False, d = 2, export_all=True, a = [0,0], b=[1,1],
+P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nech = 100, jln_mth = False, d = 2, export_all=True, born_inf = [0,0], born_sup=[1,1],
 inert_pena_ch = True, repul_param = 0, aff = True, seed = 12345678, lhs = False, save = True)
 ```
 
