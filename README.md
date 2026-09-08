@@ -86,6 +86,8 @@ Les images sauvegardées représentent :
 - une matrice rassemblant chacune des projections dans les différents plans précédemment enregistrés
 - Si les nuages sont en dimension 2 ou 3, chacun des nuage de points par batch de 9 nuages
 
+En plus des images un fichier nommé array_X0s.txt est également générer dans ce fichier si l'on met le paramètre export_all à True. Ce fichier texte contient alors l'échantillon de nuage de points. Si vous voulez pouvoir le lire dans un code python afin de pouvoir avoir accès au même format qu'en sortie de fonction, vous pouvez utiliser la fonction présente dans le document load_nuage_de_points.py de ce dépôt.
+
 ## Les méthodes d'échantillonnage disponibles
 Plusieurs méthodes d'échantillonnage sont disponibles avec ce scripte. Pour choisir la méthode utilisée par la fonction creation_dun_ech il faut jouer sur les paramètres suivants :
 - jln_mth initialement à False, permet d'échantillonner selon la méthode jln
@@ -119,7 +121,7 @@ P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nech = 100, jln_mth = False, d
 inert_pena_ch = True, repul_param = 0, aff = True, seed = 12345678, lhs = False, save = True)
 ```
 
-Les sorties que vous devriez obtenir sont dans le dossier résultat_exemple de ce dépôt.
+Les sorties que vous devriez obtenir sont dans le dossier resultat_exemple de ce dépôt.
 
 Pour toute précision sur les méthodes d'échantillonnage, nous vous prions de vous référer au rapport également présent dans ce dépôt. Toutefois, si des questions restent en suspens, vous pouvez me joindre sur l'adresse mail loick.diener@gmail.com .
 
