@@ -102,24 +102,26 @@ Il est également possible d'optenir un échantillon avec la méthode par LHS qu
 ```python
 import initialisation
 
-X0_lhs, _ = initialisation.initialisation(Nmin, Nmax, nb_sample, born_inf, born_sup, d
+P_list_f, _ = initialisation.initialisation(Nmin, Nmax, nb_sample, born_inf, born_sup, d
                  all_opt = False, aff = False, for_torch = False, lhs = True)
 ```
 Avec les 6 premières variables ayant la meme fonction que dans l'exemple d'execusion precedent et les variable suivante ayant pour but de renvoyer le nuage de points dans le meme forma que la sortie de l'autre code.
 
 
 ## Exemple d'appelle
+Le code suivant permet ainsi d'obtenir les résultat avec la méthode avec répulsion adaptative.
 
 
+```python
+import exmple_appel
 
+P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nech = 100, jln_mth = False, d = 2, export_all=True, a = [0,0], b=[1,1],
+                 inert_pena_ch = True, repul_param = 0, aff = True, seed = 12345678, lhs = False, save = True)
+```
 
+Les sortie que vous devrier obtenir sont dans le dossier résultat_exemple de ce depo
 
-
-
-
-
-Pour tout problèmes ou question suplementaire je vous invite à me contacté à l'adresse mail loick.diener@gmail.com, ou à lire les doc-string prensente dans les scripte, j'essayerais de vous répondre au plus vite.
-
+Pour toutes précision sur les méthode d'échantillonnage nous vous prions de vous référer au rapport également présent dans ce dépo. Toutefois si des question reste en suspend vouspouvez me joindre sur l'adresse mail loick.diener@gmail.com .
 
 
 
