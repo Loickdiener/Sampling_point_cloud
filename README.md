@@ -1,6 +1,6 @@
 # Sampling_point_cloud
 
-Sampling_point_cloud est un ensemble de méthodes d'échantillonnage sur l'ensemble des nuage de points. Ces scripte permette ainsi de généré un échantillon de nuage de points avec comme contrainte que chaque nuage est inclu dans un hyper-pavé de dimention quelconque et contienne un nombre maximum et un nombre minimum de points. Les méthodes présented dans ces scripte ont été implémenté et pour certaine développé au cours d'un stage de fin d'étude réalisé par Diener Loïck et encadré par Pelamatti Julien et Keller Merlin. 
+Sampling_point_cloud rassemble un ensemble de méthodes d'échantillonnage appliquées à l'ensemble des nuages de points. Chaque nuage de chaque échantillon généré est contenu dans un hyperpavé de dimension quelconque et respecte un nombre minimal et maximal de points. Les différentes approches présentées ont été implémentées et, pour certaines, développées dans le cadre du stage de fin d'études de Loïck Diener, sous l'encadrement de Julien Pelamatti et Merlin Keller.
 
 
 ## Installation
