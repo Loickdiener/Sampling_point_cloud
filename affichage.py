@@ -326,12 +326,9 @@ def traitement_et_aff(cloud_list, weight_list, Nmin, Nmax, d, born_inf = torch.t
         X0_list = []
 
         for P in P_optimals_pt:
-            X0_temp = []
-            for pnt in P:
-                X0_temp.append(pnt.cpu().numpy().item())
+            X0_temp = P.cpu().numpy()
             X0_list.append(X0_temp)
         
-        dossier = "ensemble_X0_genetraiter"
         os.makedirs(dossier, exist_ok=True)
 
         with open(os.path.join(dossier, "array_X0s.txt"), "w") as f:
