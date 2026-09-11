@@ -105,7 +105,7 @@ Il est également possible d'obtenir un échantillon avec la méthode par LHS, q
 ```python
 import initialisation
 
-P_list_f, _ = initialisation.initialisation(Nmin, Nmax, nb_sample, born_inf, born_sup, d
+P_list_f, _ = initialisation.initialisation(Nmin, Nmax, nb_sample, born_inf, born_sup, d,
                  all_opt = False, aff = False, for_torch = False, lhs = True)
 ```
 Avec les 6 premières variables ayant la même fonction que dans l'exemple d'exécutions précèdent et les variable suivante ayant pour but de renvoyer le nuage de points dans le même format que la sortie de l'autre code.
