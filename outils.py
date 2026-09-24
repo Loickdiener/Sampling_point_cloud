@@ -35,9 +35,8 @@ def repulsion_penalty3(P, tol=1e-2):
         torch.Tensor: Valeur scalaire correspondant à la pénalité moyenne
         appliquée sur l'ensemble des paires de points distinctes.
     """
-    dist = torch.cdist(P, P)  # (n, n)
-    mask = ~torch.eye(dist.size(0), dtype=bool, device=P.device)
-    return (torch.relu(10*(tol - dist[mask]))).mean()
+    dist = torch.pdist(P)
+    return torch.relu(10*(tol-dist)).mean()
 
 
 
@@ -121,17 +120,6 @@ def borne(Y, born_inf, born_sup, d=2, eps=1e-6):
         Les points situés en dehors du domaine peuvent produire des valeurs
         non définies (NaN) en raison du logarithme.
     """
-    if len(born_inf) != d:
-        if len(born_inf) == 1:
-            born_inf = torch.ones(d)*born_inf
-        else:
-            born_inf = torch.zeros(d)
-            
-    if len(born_sup) != d:
-        if len(born_sup) == 1:
-            born_sup = torch.ones(d)*born_sup
-        else:
-            born_sup = torch.zeros(d)
     return -torch.mean(torch.log(Y - born_inf + eps) + torch.log(born_sup - Y + eps))
 
 
@@ -387,7 +375,7 @@ def soft_count_near(x, c=0.0, temperature=5.0):
         torch.Tensor: Valeur scalaire représentant le comptage souple des
         éléments proches de ``c``.
     """
-    return 10 * torch.exp(-temperature * (x - c)**2).sum()
+    return torch.exp(-temperature * (x - c)**2).sum()
 
 def w_penal(w):
     """
@@ -401,7 +389,7 @@ def w_penal(w):
         torch.Tensor: Valeur scalaire correspondant à la somme des termes
         ``exp(-w²)``.
     """
-    return torch.exp(-w**2).mean()
+    return torch.exp(-w**2).sum()
 
 
 def uniform_test_stat(inertias, born_inf=0., born_sup=nech**(-1/d)):

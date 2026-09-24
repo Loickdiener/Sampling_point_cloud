@@ -60,7 +60,7 @@ def mise_enforme_borne(born_inf, born_sup):
         raise ValueError("la borne sup doit etre strictement superieur à la borne inf")
     return torch.zeros(len(born_inf)), temp/retour_param, retour_param
     
-def remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nech, P_list):
+def remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nb_sample, P_list):
     """
     Ramène un ensemble de nuages de points dans leur domaine d'origine après
     une phase de normalisation.
@@ -77,7 +77,7 @@ def remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nech, P_lis
         a_reel (torch.Tensor): Borne inférieure du domaine original.
         retour_param (float ou torch.Tensor): Facteur d'échelle retourné par
             :func:`mise_enforme_borne`.
-        nech (int): Nombre de nuages contenus dans ``P_list``.
+        nb_sample (int): Nombre de nuages contenus dans ``P_list``.
         P_list (list[torch.Tensor]): Liste des nuages de points normalisés.
 
     Returns:
@@ -88,7 +88,7 @@ def remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nech, P_lis
               système de coordonnées initial.
     """
     born_inf = born_inf_reel
-    for i in range(nech):
+    for i in range(nb_sample):
         P_list[i] = P_list[i]*retour_param + born_inf
     born_sup = born_sup*retour_param
     born_sup += born_inf
@@ -96,10 +96,10 @@ def remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nech, P_lis
     
 
 #comportement pouvant etre etrange si une des dimention est beaucoup plus petites que les autre de l'ordre de 1 pour 100 voir 1 pour 1000
-def creation_dun_ech(Nmin, Nmax, nech, born_inf = torch.tensor([0,0]), born_sup = torch.tensor([1,1]), d= 2,nrechlhs = 60000, Wasserstein = True, jln_mth = False,
-                     mu0 = 7e-4, temp = 3.5, plot_hist = False, inert_pena_ch = True, tol = 4e-7, repul_param = 0,
+def creation_dun_ech(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born_sup = torch.tensor([1,1]), d= 2,nrechlhs = 60000, Wasserstein = True, jln_mth = False,
+                     mu0 = 7e-4, temp = 3.5, plot_hist = False, inert_pena_ch = True, tol = 9e-7, repul_param = 0,
                      all_opt = True, aff = True, for_torch = True, seed = None, veux_coin = False, lhs = False, aff_repart = True,
-                     dossier = "resultat_optim", save = True,  export_all = False, aff_fin_nage = True, aff_sup_nuage = True):
+                     dossier = "resultat_optim", save = True,  export_all = True, aff_fin_nage = True, aff_sup_nuage = True):
     """
     Génère un ensemble optimisé de nuages de points.
 
@@ -116,7 +116,7 @@ def creation_dun_ech(Nmin, Nmax, nech, born_inf = torch.tensor([0,0]), born_sup 
     Args:
         Nmin (int): Nombre minimal de points autorisé dans un nuage.
         Nmax (int): Nombre maximal de points autorisé dans un nuage.
-        nech (int): Nombre de nuages à générer.
+        nb_sample (int): Nombre de nuages à générer.
         jln_mth (bool, optional): Active la méthode expérimentale fondée
             sur une distribution cible de distances. Défaut : ``False``.
         born_inf (torch.Tensor, optional): Borne inférieure du domaine de travail.
@@ -159,7 +159,7 @@ def creation_dun_ech(Nmin, Nmax, nech, born_inf = torch.tensor([0,0]), born_sup 
         save (bool, optional): Sauvegarde les figures produites.
             Défaut : ``True``.
         export_all (bool, optional): Exporte les nuages optimisés dans un
-            fichier texte. Défaut : ``False``.
+            fichier texte. Défaut : ``True``.
         aff_fin_nage (bool, optional): Affiche les nuages optimisés
             individuellement. Défaut : ``True``.
         aff_sup_nuage (bool, optional): Affiche les projections globales
@@ -211,9 +211,9 @@ def creation_dun_ech(Nmin, Nmax, nech, born_inf = torch.tensor([0,0]), born_sup 
     born_sup = init_born(born_sup, d)
     born_inf_reel = born_inf.clone()
     born_inf, born_sup, retour_param = mise_enforme_borne(born_inf, born_sup)
-    P_list, echdist = initialisation.initialisation(Nmin, Nmax, nech,jln_mth, born_inf, born_sup, d, nrechlhs, all_opt, aff, for_torch, seed, veux_coin, lhs)
+    P_list, echdist = initialisation.initialisation(Nmin, Nmax, nb_sample,jln_mth, born_inf, born_sup, d, nrechlhs, all_opt, aff, for_torch, seed, veux_coin, lhs)
     if Nmin != Nmax:
-        w_list = [(torch.rand(Nmax, requires_grad=True, device=device)) for _ in range(nech)]
+        w_list = [(torch.rand(Nmax, requires_grad=True, device=device)) for _ in range(nb_sample)]
 
         for w in w_list:
             ind = np.random.choice(np.arange(0, Nmax), size= np.random.randint(0, Nmax - Nmin + 1), replace=False)
@@ -222,17 +222,17 @@ def creation_dun_ech(Nmin, Nmax, nech, born_inf = torch.tensor([0,0]), born_sup 
                 w[ind] = -w[ind]
     else: 
         w_list = []
-    P_list, w_list = optim.optim_boucl(P_list, w_list, Nmin, Nmax, nech, echdist, born_inf, born_sup, 
+    P_list, w_list = optim.optim_boucl(P_list, w_list, Nmin, Nmax, nb_sample, echdist, born_inf, born_sup, 
                     d, mu0, temp, False, plot_hist, inert_pena_ch, 
                     jln_mth, tol, repul_param, Wasserstein)
     
-    born_inf, born_sup, P_list = remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nech, P_list)
+    born_inf, born_sup, P_list = remise_a_niveau(born_inf, born_sup, born_inf_reel, retour_param, nb_sample, P_list)
     P_final = affichage.traitement_et_aff(cloud_list = P_list, weight_list = w_list, Nmin = Nmin, 
                       Nmax = Nmax, d = d, born_inf = born_inf, born_sup = born_sup, export_all = export_all,
                       aff_fin_nage = aff_fin_nage, aff_sup_nuage = aff_sup_nuage,
                       save = save, dossier = dossier, aff_repart = aff_repart)
     
-    for i in range(nech):
+    for i in range(nb_sample):
         P_final[i] = P_final[i].cpu().numpy()
     
     return P_final #si tu veux en faire qqc directement ici
@@ -243,11 +243,11 @@ if __name__ == '__main__':
     start = time.perf_counter()
     torch.set_default_dtype(torch.float32) #a set toujours avant d'appeler la fonction attention beaucoup plus rappide en float32 qu'en float64
     """
-    P_list_f = creation_dun_ech(Nmin = 18, Nmax = 25, nech = 100, a = torch.tensor([200.365,-4250.2154]), b = torch.tensor([208.365,-4242.2154]), d = 2,
+    P_list_f = creation_dun_ech(Nmin = 18, Nmax = 25, nb_sample = 100, born_inf = torch.tensor([200.365,-4250.2154]), born_sup = torch.tensor([208.365,-4242.2154]), d = 2,
                      plot_hist = True, inert_pena_ch = True, lhs = False)
     """
-    X0_jln = creation_dun_ech(Nmin = 28, Nmax = 35, nech = 100, jln_mth = False, d = 2, export_all=True, born_inf = [0,0], born_sup=[1,1],
-                     inert_pena_ch = True, repul_param = 0, aff = True, seed = 12345678, lhs = False, save = True)
+    P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nb_sample = 100, jln_mth = False, d = 2, export_all=True, born_inf = [0,0], born_sup=[1,1],
+                     inert_pena_ch = True, repul_param = 0, aff = True, lhs = False, save = False, tol = 1e-6)
 
     end = time.perf_counter()
     print(f"Temps d'exécution : {end - start:.6f} secondes")

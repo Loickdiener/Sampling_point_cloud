@@ -46,12 +46,18 @@ def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur, reop
         positions(turn_p = True) ou les poids(turn_p = False). Le schéma 
         d'alternance dépend du nombre d'itérations déjà effectuées.
     """
-    turn_p = (((it % 5 != 0 and it < 300) or (it % 2 == 0 and it>300 and it<10000) or (it % 100 > 4 and it>10000)) or (Nmin==Nmax) or reopt)
+    turn_p = (((it % 5 != 0 and it < 300) or (it % 2 == 0 and it>300)) or (Nmin==Nmax) or reopt)
     if Nmin !=Nmax:
-        if it>300 and peri_p ==0 and it % 200 == 0:
+        """if it>300 and peri_p ==0 and it % 200 == 0:
             peri_w = 10
         if it>300 and peri_w ==0 and it % 200 == 100:
-            peri_p = 10
+            peri_p = 10"""
+        
+        if it>300 and turn_p and peri_p == 0:
+            peri_p = 5
+            
+        if it>300 and not turn_p and peri_w == 0:
+            peri_w = 5            
         
         if peri_w>0:
             turn_p = False
@@ -61,7 +67,7 @@ def variable_changeante(it, Nmin, Nmax, peri_p, peri_w, mu0, amplificateur, reop
             turn_p = True
     
     if it % 50 == 0:
-        amplificateur = min(1 + it/10 ,Nmax * 10)
+        amplificateur = min(1 + it/10 ,25)
         
     mu = max(1e-5, mu0 * (0.99 ** it))
     return turn_p, peri_p, peri_w, mu, amplificateur
@@ -144,11 +150,7 @@ def dist_min_par_ech(nech, cloud_list, P_masked, weight_list):
     
     for i in range(nech):
         dist_pour_intra = torch.cdist(P_masked[i], P_masked[i])
-        #neg = (weight_list[i] < 0).nonzero(as_tuple=True)[0]
         k, j = torch.triu_indices(dist_pour_intra.size()[0], dist_pour_intra.size()[0], offset=1)
-        #mask = (~torch.isin(k, neg)) & (~torch.isin(j, neg))
-        #k = k[mask]
-        #j = j[mask]
         intra_all_dist = dist_pour_intra[k,j]
         min_intra_dist[i] = outils.quasimin(intra_all_dist, 0.001)
     return min_intra_dist
@@ -403,7 +405,7 @@ def calc_loss_w(Nmin, Nmax, nb_points, num_sizes, cloud_list, nb_pnt_possible,
         repul_z += outils.w_penal(w)
     repul_z = repul_z/nb_samples
     
-    if counter_w_opt == 1 or counter_w_opt% 50 == 0 and it<1000:
+    if counter_w_opt == 1 or counter_w_opt% 50 == 0 and it<2000:
          with torch.no_grad():
              pds1 = torch.min(torch.max((beta/alpha) * torch.abs(loss_dist)/pena, torch.tensor(.1)), torch.tensor(10)) * pds0
              pds2 = torch.min(torch.max((gamma/alpha) * torch.abs(loss_dist)/regw,  torch.tensor(mu)), torch.tensor(.01)) * pds0
@@ -416,9 +418,9 @@ def calc_loss_w(Nmin, Nmax, nb_points, num_sizes, cloud_list, nb_pnt_possible,
 
 
     if torch.isnan(regw):
-        return (- pds0 * loss_dist + pds0 * 1000 * penalty_size + pds1 * pena + pds3 * repul_z ), counter_w_opt, pds1, pds2, pds3
+        return (pds0 * loss_dist + pds0 * 1000 * penalty_size + pds1 * pena + pds3 * repul_z ), counter_w_opt, pds1, pds2, pds3
     else:   
-        return (- pds0 * loss_dist + pds1 * pena +  max((20/(it+1)), 1e-2)* pds2 * regw + pds3 * repul_z), counter_w_opt, pds1, pds2, pds3
+        return (pds0 * loss_dist + pds1 * pena +  max((20/(it+1)), 1e-2)* pds2 * regw + pds3 * repul_z), counter_w_opt, pds1, pds2, pds3
 
 
 
@@ -532,6 +534,10 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
     pds1 = pds2 = pds3 = 1
     nbp_possible = torch.linspace(Nmin, Nmax, Nmax - Nmin +1, device=device)
     born_disper_inf = repul_param
+    cnt_good_p = 0
+    varia_w = []
+    varia_p = []
+    hist_lossdist = []
     if not jln_mth:
         if inert_pena_ch:
             nb_quasi = 300
@@ -553,7 +559,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
 
     optimizer_P = torch.optim.AdamW(
         [P for P in cloud_list],
-        lr=1e-3)
+        lr=2e-3)
     
     if Nmin != Nmax:
         optimizer_w = torch.optim.AdamW(
@@ -598,8 +604,8 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
                 
                 
             loss = calc_loss_p(born_inf, born_sup, d, cloud_list, pds0, loss_dist, pena_rep, nb_samples, inert_pena, mu)
-            if np.abs(prev_ploss - loss.item())<1e-5:
-                peri_w = 10
+            if np.abs(prev_ploss - loss.item())<tol * 5:
+                peri_w = 11
                 
             hist_loss_cl.append(loss.item())
         else:
@@ -607,25 +613,55 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
                             weight_list, nb_samples, ct, it, alpha, beta, gamma, delta, loss_dist, mu
                             , pds0, pds1, pds2, pds3)
 
-            if np.abs(prev_wloss - loss.item())<1e-5:
-                peri_p = 10
+            if np.abs(prev_wloss - loss.item())<tol * 5:
+                peri_p = 11
          
         #Condition d'arret
         with torch.no_grad():
+            if turn_p:
+                varia_p.append(loss.item())
+            else:
+                varia_w.append(loss.item())
+            hist_lossdist.append(loss_dist.item())
+            
+            
             if it > 800 :
+                #break ideal mais peux realiste à tolerance élevé
                 if turn_p:
                     if torch.abs(loss - prev_ploss) + np.abs(prev_wloss - prev_prev_wloss)< tol:
+                        print("ok")
                         break
+                        
                 else :
                     if torch.abs(loss - prev_wloss) + np.abs(prev_ploss - prev_prev_ploss)< tol:
+                        print("ok")
                         break
-                    
-                if torch.abs(loss_dist - prev_loss_dist)< tol/2 and it > 1500:
-                    cntlds +=1
-                    if cntlds >10:
-                        break
-                else:
-                    cntlds = 0
+                
+               #break permettant un compromit tout en ayant encore bien convergé 
+                if it > 1000:
+                    if np.abs(np.mean(varia_p[-40:-30]) - np.mean(varia_p[-10:]))< tol * 50:
+                        if np.abs(np.mean(varia_w[-40:-30]) - np.mean(varia_w[-10:]))< max(tol * 100, tol * 100 * prev_wloss):
+                            print("alors peut etre")
+                            break
+                        if torch.abs(loss_dist - prev_loss_dist) < tol/2:
+                            cntlds +=1
+                            if cntlds >12:
+                                print("ici je sais pas 2")
+                                break
+                        else:
+                            cntlds = 0
+                
+                #break de sécurité, est un peux trop réstrictif mais se déclanche fa
+                if it>4000:
+                    if torch.abs(loss_dist - prev_loss_dist) < tol/2:
+                        cntlds +=1
+                        if cntlds >9:
+                            print("l'ancienne version")
+                            break
+                    else:
+                        cntlds = 0
+                
+                  
             
             if peri_w >0 and torch.abs(loss - prev_wloss)<tol*10:
                 peri_w = 0
@@ -652,7 +688,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
             
           
         if cnt>49:
-            print(f"it {it} | loss {prev_ploss + prev_wloss:.6f} | loss w {prev_wloss:.6f} | loss cl {prev_ploss:.6f}")
+            print(f"it {it} | loss {prev_ploss + prev_wloss:.6f} | loss w {prev_wloss:.6f} | loss cl {prev_ploss:.6f} |{np.abs(np.mean(varia_p[-40:-30]) - np.mean(varia_p[-10:])):.6f} {np.abs(np.mean(varia_w[-40:-30]) - np.mean(varia_w[-10:])):.6f} {np.std(hist_lossdist[-50:]):.6f}")
             print(cloud_list[0].device)
             print(torch.cuda.memory_allocated() / 1e6, "MB")
             cnt = 0
@@ -670,6 +706,21 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         prev_loss_dist = loss_dist
         it +=1
     
+    plt.plot(varia_p[200:])
+    plt.show()
+    
+    plt.plot(varia_w[200:])
+    plt.show()
+    
+    plt.plot(hist_lossdist[500:])
+    plt.show()
+    
+    if inert_pena_ch :
+
+        plt.hist(min_intra_dist.detach().cpu().numpy())
+        plt.show()
+        
+        
     if not jln_mth and inert_pena_ch:
         sorted_intra_min, indice = torch.sort(min_intra_dist)
         indice = indice.cpu()
@@ -687,8 +738,8 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
         
         plt.plot(hist_loss_cl[500:])
         plt.show()
-    
-    if jln_mth:
+    save = True
+    if jln_mth and save:
         from scipy import stats
         data1 = echdist.detach().cpu().numpy()
         data2 =  all_dist.detach().cpu().numpy()

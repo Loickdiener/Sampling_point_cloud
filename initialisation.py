@@ -331,7 +331,7 @@ def initialisation(Nmin, Nmax, nb_sample,jln_mth = False, born_inf = torch.tenso
         echdist = np.array(echdist).squeeze()
         echdist = np.sort(echdist)
         echdist = ((echdist/d))
-        echdist = torch.tensor(echdist, dtype=torch.get_default_dtype())
+        echdist = torch.tensor(echdist, dtype=torch.get_default_dtype(), requires_grad=False)
         return P_list, echdist
     
     
