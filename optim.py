@@ -629,24 +629,20 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
                 #break ideal mais peux realiste à tolerance élevé
                 if turn_p:
                     if torch.abs(loss - prev_ploss) + np.abs(prev_wloss - prev_prev_wloss)< tol:
-                        print("ok")
                         break
                         
                 else :
                     if torch.abs(loss - prev_wloss) + np.abs(prev_ploss - prev_prev_ploss)< tol:
-                        print("ok")
                         break
                 
                #break permettant un compromit tout en ayant encore bien convergé 
                 if it > 1000:
                     if np.abs(np.mean(varia_p[-40:-30]) - np.mean(varia_p[-10:]))< tol * 50:
                         if np.abs(np.mean(varia_w[-40:-30]) - np.mean(varia_w[-10:]))< max(tol * 100, tol * 100 * prev_wloss):
-                            print("alors peut etre")
                             break
                         if torch.abs(loss_dist - prev_loss_dist) < tol/2:
                             cntlds +=1
                             if cntlds >12:
-                                print("ici je sais pas 2")
                                 break
                         else:
                             cntlds = 0
@@ -656,7 +652,6 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
                     if torch.abs(loss_dist - prev_loss_dist) < tol/2:
                         cntlds +=1
                         if cntlds >9:
-                            print("l'ancienne version")
                             break
                     else:
                         cntlds = 0
@@ -688,7 +683,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
             
           
         if cnt>49:
-            print(f"it {it} | loss {prev_ploss + prev_wloss:.6f} | loss w {prev_wloss:.6f} | loss cl {prev_ploss:.6f} |{np.abs(np.mean(varia_p[-40:-30]) - np.mean(varia_p[-10:])):.6f} {np.abs(np.mean(varia_w[-40:-30]) - np.mean(varia_w[-10:])):.6f} {np.std(hist_lossdist[-50:]):.6f}")
+            print(f"it {it} | loss {prev_ploss + prev_wloss:.6f} | loss w {prev_wloss:.6f} | loss cl {prev_ploss:.6f}")
             print(cloud_list[0].device)
             print(torch.cuda.memory_allocated() / 1e6, "MB")
             cnt = 0
@@ -705,21 +700,7 @@ def optim_boucl(cloud_list, weight_list, Nmin, Nmax, nb_samples, echdist = [], b
             hst_lossw.append(prev_wloss)
         prev_loss_dist = loss_dist
         it +=1
-    
-    plt.plot(varia_p[200:])
-    plt.show()
-    
-    plt.plot(varia_w[200:])
-    plt.show()
-    
-    plt.plot(hist_lossdist[500:])
-    plt.show()
-    
-    if inert_pena_ch :
-
-        plt.hist(min_intra_dist.detach().cpu().numpy())
-        plt.show()
-        
+                
         
     if not jln_mth and inert_pena_ch:
         sorted_intra_min, indice = torch.sort(min_intra_dist)
