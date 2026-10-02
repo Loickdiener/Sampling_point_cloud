@@ -21,6 +21,20 @@ https://pixi.prefix.dev/latest/
 
 via le pixi.toml qui contient la liste des dépendances.
 
+### Remarque : 
+
+Pour l'instant le pixi.toml et le pixi.lock sont configurés pour linux-64 :
+
+platforms = ["linux-64"]
+
+Il est possible d'ajouter d'autres OS, en spécifiant par exemple : 
+
+platforms = ["linux-64", "osx-arm64", "win-64"]
+
+puis de relancer la résolution des packages (en utilisant par exemple la commande pixi shell) pour mettre à jour les dépendances pour toutes les plateformes.
+
+
+
 ## Validation
 
 Pour confirmer que l'ensemble des librairies soit correctement installé, nous vous conseillons d'effectuer la commande :
