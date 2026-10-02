@@ -14,6 +14,13 @@ Avec `your_env_name` le nom de l'environnement que vous voulez créer.
 
 La commande ci-dessus installe python 3.12 dans l'environnement, mais si vous avez une quelconque autre préférence, ces scripts fonctionnent avec les versions de python de 3.10 à 3.14.3. Pour ce qui est d'autres versions, le test n'a pas été effectué.
 
+
+Alternativement, les packages peuvent être installés avec pixi :
+
+https://pixi.prefix.dev/latest/
+
+via le pixi.toml qui contient la liste des dépendances.
+
 ## Validation
 
 Pour confirmer que l'ensemble des librairies soit correctement installé, nous vous conseillons d'effectuer la commande :
