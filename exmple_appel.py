@@ -1,3 +1,5 @@
+#%%
+
 import numpy as np
 import torch
 import affichage
@@ -10,6 +12,7 @@ import shutil
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+#%%
 
 def init_born(a, d):
     if len(a)!= d:
@@ -238,6 +241,7 @@ def creation_dun_ech(Nmin, Nmax, nb_sample, born_inf = torch.tensor([0,0]), born
     return P_final #si tu veux en faire qqc directement ici
     
     
+#%%
 
 if __name__ == '__main__':
     start = time.perf_counter()
@@ -247,9 +251,10 @@ if __name__ == '__main__':
                      plot_hist = True, inert_pena_ch = True, lhs = False)
     """
     P_list_f = creation_dun_ech(Nmin = 28, Nmax = 35, nb_sample = 100, jln_mth = False, d = 2, export_all=True, born_inf = [0,0], born_sup=[1,1],
-                     inert_pena_ch = True, repul_param = 0, aff = True, lhs = False, save = False, tol = 1e-6)
+                     inert_pena_ch = True, repul_param = 0, aff = True, lhs = False, save = True, tol = 1e-6)
 
     end = time.perf_counter()
     print(f"Temps d'exécution : {end - start:.6f} secondes")
     
     
+# %%
