@@ -56,7 +56,7 @@ Avec :
 - `d` : la dimension dans laquelle les nuages de points vivent
 
 
-Il convient toutefois de se souvenir que le temps de calcul nécessaire à l'obtention de l'échantillon augmente de manière quadratique avec l'augmentation du nombre de nuages dans l'échantillon ainsi qu'avec l'augmentation du nombre de points maximum dans les nuages. Ainsi, si l'on veut générer de très grands échantillons de nuages de points avec ces scripts, cela peut prendre beaucoup de temps. A titre indicatif, lorsque le code tourne sur gpu, le temps nécessaire pour générer 100 nuages de points contenant entre 28 et 35 points en dimension 2 est d'environ 4 minutes.
+Il convient toutefois de se souvenir que le temps de calcul nécessaire à l'obtention de l'échantillon augmente de manière quadratique avec l'augmentation du nombre de nuages dans l'échantillon ainsi qu'avec l'augmentation du nombre de points maximum dans les nuages. Ainsi, si l'on veut générer de très grands échantillons de nuages de points avec ces scripts, cela peut prendre beaucoup de temps. A titre indicatif, lorsque le code tourne sur gpu, le temps nécessaire pour générer 100 nuages de points contenant entre 28 et 35 points en dimension 2 est d'environ 10 minutes.
 
 
 ## Utilisation et interprétation des sorties
