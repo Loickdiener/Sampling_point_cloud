@@ -1,5 +1,19 @@
 #%%
 
+"""_summary_
+
+Cet exemple illustre la méthode d'échantillonnage avec répulsion adaptative sur [0, 1]x[0,1] pour 100 nuages de points de taille comprise entre 28 et 35 points.
+
+Pour rappel, la méthode minimise la some des deux loss : 
+- l'une qui combine l'aspect space-filling et une distribution uniforme de la distance minimale intra-nuage ; 
+- l'autre pour obtenir une distribution uniforme de la taille des nuages. 
+
+Les nuages représentés à la fin sont rangés par ordre de distances minimales croissantes.
+
+"""
+
+#%%
+
 import numpy as np
 import torch
 import affichage
